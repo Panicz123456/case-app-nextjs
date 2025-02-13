@@ -51,21 +51,14 @@ model Configuration {
   Order           Order[]
 }
 
-model User {
-  id    String @id @default(uuid())
-  email String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Order     Order?   @relation(fields: [orderId], references: [id])
-  orderId   String?
-}
-
 model Order {
   id              String        @id @default(uuid())
   configurationId String
   configuration   Configuration @relation(fields: [configurationId], references: [id])
-  user            User[]
+  
+  user            User?         @relation(fields: [userId], references: [id]) // 🛠️ Poprawione!
+  userId          String?  // Klucz obcy do User
+
   amount          Float
   isPaid          Boolean       @default(false)
   status          OrderStatus   @default(awaiting_shipment)
@@ -77,6 +70,15 @@ model Order {
 
   createdAt DateTime @default(now())
   updated   DateTime @updatedAt
+}
+
+model User {
+  id    String @id @default(uuid())
+  email String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders  Order[]  // 🛠️ Relacja one-to-many (jeden użytkownik → wiele zamówień)
 }
 
 model ShippingAddress {

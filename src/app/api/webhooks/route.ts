@@ -1,9 +1,12 @@
 import { db } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
-import { ok } from "assert";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { Resend } from "resend";
+import { OrderRelivedEmail } from "@/components/emails/OrderRecivedEmail";
+
+const resend = new Resend(process.env.RESEND_API);
 
 export async function POST(req: Request) {
   try {
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
       const billingAddress = session.customer_details?.address;
       const shippingAddress = session.shipping_details?.address;
 
-      await db.order.update({
+      const updateOrder = await db.order.update({
         where: {
           id: orderId,
         },
@@ -66,6 +69,25 @@ export async function POST(req: Request) {
             },
           },
         },
+      });
+
+      await resend.emails.send({
+        from: "CaseCobra <paniczgg@gmail.com>",
+        to: [event.data.object.customer_details.email],
+        subject: "Thank for your order",
+        react: OrderRelivedEmail({
+          orderId,
+          orderData: updateOrder.createdAt.toLocaleDateString(),
+          //@ts-ignore
+          shippingAddress: {
+            name: session.customer_details!.name!,
+            city: shippingAddress!.city!,
+            country: shippingAddress?.country!,
+            postalCode: shippingAddress?.postal_code!,
+            street: shippingAddress?.line1!,
+            state: shippingAddress?.state!,
+          },
+        }),
       });
     }
 
